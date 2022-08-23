@@ -2,4 +2,4 @@
 *.h5ad
 
 # csv file for sql input
-.sql_input/*.csv
+.sql_input/
