@@ -1,0 +1,5 @@
+# h5ad file
+*.h5ad
+
+# csv file for sql input
+.sql_input/
