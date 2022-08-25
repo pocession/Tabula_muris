@@ -24,7 +24,7 @@ github.com/pocession/Tabula_muris/
 ├── *.h5ad: original h5ad files
 ```
 
-The processed data is provided in 'csv' formats and stored in the follwoing folder, `output`.
+The processed data is provided in 'csv' formats and stored in the [follwoing folder](/output).
 
 ## Useful links
 - [Data source](https://s3.console.aws.amazon.com/s3/buckets/czb-tabula-muris-senis?region=us-west-2&tab=objects)
