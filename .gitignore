@@ -1,5 +1,8 @@
 # h5ad file
 *.h5ad
 
-# csv files
+# subset data
 subset/
+
+# DS_Store file
+.DS_Store
