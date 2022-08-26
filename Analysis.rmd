@@ -47,9 +47,26 @@ tissue <- "LargeIntestine"
 Functions used in this script
 
 ```{r functions, echo=FALSE}
+## get pseudobulk for each cell type
+getPseudobulk <- function(mat, celltype) {
+   mat.summary <- do.call(cbind, lapply(levels(celltype), function(ct) {
+     cells <- names(celltype)[celltype==ct]
+     pseudobulk <- rowSums(mat[, cells])
+     return(pseudobulk)
+   }))
+   colnames(mat.summary) <- levels(celltype)
+   return(mat.summary)
+}
+
+## save to csv
 save_csv <- function(df,dir,name) {
   stopifnot(!missing(df) || !missing(dir) || !missing(name))
   write.csv(df,file.path(dir,name))
+}
+
+## calculate row-wise variance 
+RowVar <- function(x, ...) {
+  rowSums((x - rowMeans(x, ...))^2, ...)/(dim(x)[2] - 1)
 }
 ```
 
@@ -58,7 +75,9 @@ save_csv <- function(df,dir,name) {
 ```{r inputs, echo=FALSE}
 annot <- read.csv(file.path(input_dir,paste(method,tissue,paste0("annot",".csv"),sep="_")))
 mtx <- read.csv(file.path(input_dir,paste(method,tissue,paste0("mtx",".csv"),sep="_"))) # long process
-mtx <- as.matrix(mtx)
+rownames(mtx) <- mtx$index
+mtx <- mtx[,2:ncol(mtx)]
+mtx <- as.matrix(t(mtx))
 
 ## convert count matrix to sparse matrix for faster computing
 mtx.sparse <- Matrix(mtx, sparse = TRUE)
@@ -86,4 +105,86 @@ cell_proportion <- annot %>%
 save_csv(cell_proportion,output_dir,paste(method,tissue,paste0(type_cell_proportion,".csv"),sep="_"))
 ```
 
-## Generate pseudo-bulk
+## Expression dynamics in each cell types
+
+Take a look at how many cell types in this tissue.
+
+```{r cell_proportions, warnings=FALSE}
+cell.type.list <- annot %>%
+  distinct(cell_ontology_class) %>%
+  as.list(.)
+cell.type.list
+```
+
+Take a look at how many mouse id.
+
+```{r cell_proportions, warnings=FALSE}
+mouseid.list <- annot %>%
+  distinct(mouse.id) %>%
+  as.list(.)
+mouseid.list
+```
+
+### Get data with the most 200 variant genes
+
+To reduce the computation, we will only choose top 200 genes with the most variance for further analysis.
+
+```{r variance, warnings=FALSE}
+## Calculate the variance, sort the gene based on the variance, and get the top 200 variant genes
+Gene.Var <- RowVar((mtx.sparse)) %>%
+  sort(decreasing = TRUE)
+Gene.subset <- Gene.Var[1:200]
+
+## Subset data based on the gene index
+mtx.sparse.subset <- mtx.sparse[names(Gene.subset),]
+```
+
+### Get pseudobulk for each cell type in each mouse
+```{r pseudobulk mouse, warnings=FALSE}
+## remove minor cell populations, because in some mouse, there are only few cells from those population 
+minor_cell_populaiton <- c("Brush cell of epithelium proper of large intestine",
+                           "secretory cell",
+                           "enteroendocrine cell")
+mouse.list <- c("18_53_M", "18_45_M", "18_46_F",
+                 "18_47_F", "24_60_M", "24_59_M",
+                 "24_58_M", "24_61_M", "3_8_M",
+                 "3_9_M", "3_10_M", "3_11_M",
+                 "3_56_F", "3_38_F", "3_39_F" )
+annot.subset <- annot %>%
+  filter(!cell_ontology_class %in%  minor_cell_populaiton)
+pseudobulk.mouse <- list()
+for (imouse in mouse.list) {
+  test.mouse <- annot.subset %>%
+      filter(mouse.id == {{imouse}})
+  celltype <- as.factor(test.mouse$cell_ontology_class)
+  names(celltype) <- test.mouse$index
+  pseudobulk.mouse[[imouse]] <- getPseudobulk(mtx.sparse.subset, celltype)
+}
+```
+
+### For each cell type, combine the pseudobulk data from each mouse
+```{r final pseudobulk, warning=FALSE}
+major_cell_population <- c("intestinal crypt stem cell",
+                           "large intestine goblet cell",
+                           "enterocyte of epithelium of large intestine",
+                           "epithelial cell of large intestine")
+
+pseudobulk.cell <- list()
+for (icell in major_cell_population) {
+  output <- data.frame(symbol=rownames(mtx.sparse.subset))
+  for (imouse in mouse.list) {
+    tmpdf <- data.frame(tmp = pseudobulk.mouse[[imouse]][,icell])
+    colnames(tmpdf) <- imouse
+    output <- cbind(output,tmpdf)
+  }
+  pseudobulk.cell[[icell]] <- output
+}
+
+for (icell in major_cell_population) {
+  save_csv(pseudobulk.cell[[icell]],output_dir,
+           paste(method,tissue,paste0(icell,"pseudobulk",".csv"),sep="_"))
+}
+```
+
+
+
