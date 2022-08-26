@@ -9,22 +9,81 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Summary
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+This analysis is aiming for identifying aging-associated genes (biomarkers) in large intestine and visualizing it in Tableau. The data is subset from [Tabula muris](https://s3.console.aws.amazon.com/s3/buckets/czb-tabula-muris-senis?region=us-west-2&tab=objects). The subset data is then filtered and normalized by [my python script](https://github.com/pocession/Tabula_muris/scRNA_subsetting.ipynb).
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+# Files 
 
-```{r cars}
-summary(cars)
+Due to the large size, all input files are not uploaded. All output files for Tableau are saved in [output folder](https://github.com/pocession/Tabula_muris/output).
+
+# Configure
+
+## Packages
+
+Packages are required for this analysis.
+
+```{r packages, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(Matrix)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+## Set dir and variables
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r dir, echo=FALSE}
+wd <- getwd()
+subset <- "subset"
+output <- "output"
+input_dir <- file.path(wd,subset)
+output_dir <- file.path(wd,output)
+method <- "facs"
+tissue <- "LargeIntestine"
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## functions
+
+Functions used in this script
+
+```{r functions, echo=FALSE}
+save_csv <- function(df,dir,name) {
+  stopifnot(!missing(df) || !missing(dir) || !missing(name))
+  write.csv(df,file.path(dir,name))
+}
+```
+
+## read inputs
+
+```{r inputs, echo=FALSE}
+annot <- read.csv(file.path(input_dir,paste(method,tissue,paste0("annot",".csv"),sep="_")))
+mtx <- read.csv(file.path(input_dir,paste(method,tissue,paste0("mtx",".csv"),sep="_"))) # long process
+mtx <- as.matrix(mtx)
+
+## convert count matrix to sparse matrix for faster computing
+mtx.sparse <- Matrix(mtx, sparse = TRUE)
+class(mtx.sparse)
+```
+
+# Analysis process
+
+## Cell proportion dynamics
+
+Generate reports for cell proportion dynamics 
+
+```{r cell_proportions, warnings=FALSE}
+type_cell_proportion <- "cell_proportion"
+cell_sum <- annot %>%
+  group_by(mouse.id,cell_ontology_class) %>%
+  summarise(count=n()) %>%
+  summarise(sum=sum(count))
+cell_proportion <- annot %>%
+  group_by(mouse.id,cell_ontology_class) %>% 
+  summarise(count=n()) %>% 
+  left_join(cell_sum,by="mouse.id") %>%
+  separate(mouse.id,c("month","id","sex"),sep="_") %>%
+  mutate(proportion = 100*(count/sum))
+save_csv(cell_proportion,output_dir,paste(method,tissue,paste0(type_cell_proportion,".csv"),sep="_"))
+```
+
+## Generate pseudo-bulk

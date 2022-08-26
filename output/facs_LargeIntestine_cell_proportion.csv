@@ -1,0 +1,103 @@
+"","month","id","sex","cell_ontology_class","count","sum","proportion"
+"1","18","45","M","Brush cell of epithelium proper of large intestine",19,625,3.04
+"2","18","45","M","enterocyte of epithelium of large intestine",204,625,32.64
+"3","18","45","M","enteroendocrine cell",8,625,1.28
+"4","18","45","M","epithelial cell of large intestine",169,625,27.04
+"5","18","45","M","intestinal crypt stem cell",113,625,18.08
+"6","18","45","M","large intestine goblet cell",72,625,11.52
+"7","18","45","M","secretory cell",40,625,6.4
+"8","18","46","F","Brush cell of epithelium proper of large intestine",10,591,1.69204737732657
+"9","18","46","F","enterocyte of epithelium of large intestine",239,591,40.4399323181049
+"10","18","46","F","enteroendocrine cell",4,591,0.676818950930626
+"11","18","46","F","epithelial cell of large intestine",171,591,28.9340101522843
+"12","18","46","F","intestinal crypt stem cell",40,591,6.76818950930626
+"13","18","46","F","large intestine goblet cell",127,591,21.4890016920474
+"14","18","47","F","Brush cell of epithelium proper of large intestine",11,589,1.86757215619694
+"15","18","47","F","enterocyte of epithelium of large intestine",182,589,30.8998302207131
+"16","18","47","F","enteroendocrine cell",12,589,2.03735144312394
+"17","18","47","F","epithelial cell of large intestine",122,589,20.7130730050934
+"18","18","47","F","intestinal crypt stem cell",68,589,11.5449915110357
+"19","18","47","F","large intestine goblet cell",83,589,14.0916808149406
+"20","18","47","F","secretory cell",111,589,18.8455008488964
+"21","18","53","M","Brush cell of epithelium proper of large intestine",14,564,2.4822695035461
+"22","18","53","M","enterocyte of epithelium of large intestine",189,564,33.5106382978723
+"23","18","53","M","enteroendocrine cell",15,564,2.65957446808511
+"24","18","53","M","epithelial cell of large intestine",82,564,14.5390070921986
+"25","18","53","M","intestinal crypt stem cell",134,564,23.758865248227
+"26","18","53","M","large intestine goblet cell",109,564,19.3262411347518
+"27","18","53","M","secretory cell",21,564,3.72340425531915
+"28","24","58","M","Brush cell of epithelium proper of large intestine",13,561,2.31729055258467
+"29","24","58","M","enterocyte of epithelium of large intestine",147,561,26.2032085561497
+"30","24","58","M","enteroendocrine cell",17,561,3.03030303030303
+"31","24","58","M","epithelial cell of large intestine",69,561,12.2994652406417
+"32","24","58","M","intestinal crypt stem cell",104,561,18.5383244206774
+"33","24","58","M","large intestine goblet cell",209,561,37.2549019607843
+"34","24","58","M","secretory cell",2,561,0.35650623885918
+"35","24","59","M","Brush cell of epithelium proper of large intestine",32,558,5.73476702508961
+"36","24","59","M","enterocyte of epithelium of large intestine",145,558,25.9856630824373
+"37","24","59","M","enteroendocrine cell",8,558,1.4336917562724
+"38","24","59","M","epithelial cell of large intestine",77,558,13.7992831541219
+"39","24","59","M","intestinal crypt stem cell",116,558,20.7885304659498
+"40","24","59","M","large intestine goblet cell",136,558,24.3727598566308
+"41","24","59","M","secretory cell",44,558,7.88530465949821
+"42","24","60","M","Brush cell of epithelium proper of large intestine",6,338,1.77514792899408
+"43","24","60","M","enterocyte of epithelium of large intestine",155,338,45.8579881656805
+"44","24","60","M","enteroendocrine cell",10,338,2.9585798816568
+"45","24","60","M","epithelial cell of large intestine",64,338,18.9349112426036
+"46","24","60","M","intestinal crypt stem cell",16,338,4.73372781065089
+"47","24","60","M","large intestine goblet cell",87,338,25.7396449704142
+"48","24","61","M","Brush cell of epithelium proper of large intestine",3,498,0.602409638554217
+"49","24","61","M","enterocyte of epithelium of large intestine",105,498,21.0843373493976
+"50","24","61","M","enteroendocrine cell",22,498,4.41767068273092
+"51","24","61","M","epithelial cell of large intestine",72,498,14.4578313253012
+"52","24","61","M","intestinal crypt stem cell",135,498,27.1084337349398
+"53","24","61","M","large intestine goblet cell",72,498,14.4578313253012
+"54","24","61","M","secretory cell",89,498,17.8714859437751
+"55","3","10","M","Brush cell of epithelium proper of large intestine",8,590,1.35593220338983
+"56","3","10","M","enterocyte of epithelium of large intestine",166,590,28.135593220339
+"57","3","10","M","enteroendocrine cell",10,590,1.69491525423729
+"58","3","10","M","epithelial cell of large intestine",181,590,30.6779661016949
+"59","3","10","M","intestinal crypt stem cell",90,590,15.2542372881356
+"60","3","10","M","large intestine goblet cell",63,590,10.6779661016949
+"61","3","10","M","secretory cell",72,590,12.2033898305085
+"62","3","11","M","Brush cell of epithelium proper of large intestine",11,329,3.3434650455927
+"63","3","11","M","enterocyte of epithelium of large intestine",96,329,29.1793313069909
+"64","3","11","M","enteroendocrine cell",8,329,2.43161094224924
+"65","3","11","M","epithelial cell of large intestine",147,329,44.6808510638298
+"66","3","11","M","intestinal crypt stem cell",29,329,8.81458966565349
+"67","3","11","M","large intestine goblet cell",34,329,10.3343465045593
+"68","3","11","M","secretory cell",4,329,1.21580547112462
+"69","3","38","F","Brush cell of epithelium proper of large intestine",9,535,1.68224299065421
+"70","3","38","F","enterocyte of epithelium of large intestine",141,535,26.3551401869159
+"71","3","38","F","enteroendocrine cell",6,535,1.1214953271028
+"72","3","38","F","epithelial cell of large intestine",86,535,16.0747663551402
+"73","3","38","F","intestinal crypt stem cell",85,535,15.8878504672897
+"74","3","38","F","large intestine goblet cell",208,535,38.8785046728972
+"75","3","39","F","Brush cell of epithelium proper of large intestine",25,849,2.94464075382803
+"76","3","39","F","enterocyte of epithelium of large intestine",241,849,28.3863368669022
+"77","3","39","F","enteroendocrine cell",8,849,0.94228504122497
+"78","3","39","F","epithelial cell of large intestine",215,849,25.3239104829211
+"79","3","39","F","intestinal crypt stem cell",230,849,27.0906949352179
+"80","3","39","F","large intestine goblet cell",89,849,10.4829210836278
+"81","3","39","F","secretory cell",41,849,4.82921083627797
+"82","3","56","F","Brush cell of epithelium proper of large intestine",3,595,0.504201680672269
+"83","3","56","F","enterocyte of epithelium of large intestine",173,595,29.0756302521008
+"84","3","56","F","enteroendocrine cell",20,595,3.36134453781513
+"85","3","56","F","epithelial cell of large intestine",60,595,10.0840336134454
+"86","3","56","F","intestinal crypt stem cell",126,595,21.1764705882353
+"87","3","56","F","large intestine goblet cell",212,595,35.6302521008403
+"88","3","56","F","secretory cell",1,595,0.168067226890756
+"89","3","8","M","Brush cell of epithelium proper of large intestine",8,563,1.42095914742451
+"90","3","8","M","enterocyte of epithelium of large intestine",164,563,29.1296625222025
+"91","3","8","M","enteroendocrine cell",7,563,1.24333925399645
+"92","3","8","M","epithelial cell of large intestine",100,563,17.7619893428064
+"93","3","8","M","intestinal crypt stem cell",165,563,29.3072824156306
+"94","3","8","M","large intestine goblet cell",46,563,8.17051509769094
+"95","3","8","M","secretory cell",73,563,12.9662522202487
+"96","3","9","M","Brush cell of epithelium proper of large intestine",3,526,0.570342205323194
+"97","3","9","M","enterocyte of epithelium of large intestine",195,526,37.0722433460076
+"98","3","9","M","enteroendocrine cell",6,526,1.14068441064639
+"99","3","9","M","epithelial cell of large intestine",89,526,16.9201520912548
+"100","3","9","M","intestinal crypt stem cell",128,526,24.3346007604563
+"101","3","9","M","large intestine goblet cell",40,526,7.60456273764259
+"102","3","9","M","secretory cell",65,526,12.3574144486692

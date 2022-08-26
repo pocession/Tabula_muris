@@ -3,15 +3,13 @@ Analysis
 Tsunghan Hsieh
 2022-08-26
 
-## R Markdown
+# Summary
 
-This is an R Markdown document. Markdown is a simple formatting syntax
-for authoring HTML, PDF, and MS Word documents. For more details on
-using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that
-includes both content as well as the output of any embedded R code
-chunks within the document. You can embed an R code chunk like this:
+This analysis is aiming for identifying aging-associated genes
+(biomarkers) in large intestine. The data is subset from
+<https://s3.console.aws.amazon.com/s3/buckets/czb-tabula-muris-senis?region=us-west-2&tab=objects>.
+The subset data was then filtered and normalized by [my python
+script](./scRNA_subsetting.ipynb).
 
 ``` r
 summary(cars)
@@ -25,7 +23,7 @@ summary(cars)
     ##  3rd Qu.:19.0   3rd Qu.: 56.00  
     ##  Max.   :25.0   Max.   :120.00
 
-## Including Plots
+# Packages
 
 You can also embed plots, for example:
 
