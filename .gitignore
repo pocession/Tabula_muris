@@ -2,4 +2,4 @@
 *.h5ad
 
 # csv files
-.subset/
+subset/
