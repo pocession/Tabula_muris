@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This analysis is aiming for identifying aging-associated genes (biomarkers) in large intestine and visualizing it in Tableau. The data is subset from [Tabula muris](https://s3.console.aws.amazon.com/s3/buckets/czb-tabula-muris-senis?region=us-west-2&tab=objects). The subset data is then filtered and normalized by [my python script](https://github.com/pocession/Tabula_muris/scRNA_subsetting.ipynb).
 
-# Files 
+# Files
 
 Due to the large size, all input files are not uploaded. All output files for Tableau are saved in [output folder](https://github.com/pocession/Tabula_muris/output).
 
@@ -27,8 +27,8 @@ Packages are required for this analysis.
 library(dplyr)
 library(tidyr)
 library(Matrix)
+library(DESeq2)
 ```
-
 
 ## Set dir and variables
 
@@ -49,6 +49,7 @@ Functions used in this script
 ```{r functions, echo=FALSE}
 ## get pseudobulk for each cell type
 getPseudobulk <- function(mat, celltype) {
+  stopifnot(!missing(mat) || !missing(celltype))
    mat.summary <- do.call(cbind, lapply(levels(celltype), function(ct) {
      cells <- names(celltype)[celltype==ct]
      pseudobulk <- rowSums(mat[, cells])
@@ -67,6 +68,19 @@ save_csv <- function(df,dir,name) {
 ## calculate row-wise variance 
 RowVar <- function(x, ...) {
   rowSums((x - rowMeans(x, ...))^2, ...)/(dim(x)[2] - 1)
+}
+
+## check the differentially-expressed genes
+checkDEG <- function(df,padj,log2FC) {
+  stopifnot(!missing(df) || !missing(padj) || !missing(log2FC))
+  df <- df %>%
+    mutate(DEG = ifelse(padj > {{padj}}, "None", ifelse(
+      log2FoldChange > {{log2FC}}, "Up", ifelse(
+        log2FoldChange < -{{log2FC}}, "Down", "None"
+      )
+    )))
+  df$symbol <- rownames(df)
+  return(df)
 }
 ```
 
@@ -88,7 +102,7 @@ class(mtx.sparse)
 
 ## Cell proportion dynamics
 
-Generate reports for cell proportion dynamics 
+Generate reports for cell proportion dynamics
 
 ```{r cell_proportions, warnings=FALSE}
 type_cell_proportion <- "cell_proportion"
@@ -133,13 +147,14 @@ To reduce the computation, we will only choose top 200 genes with the most varia
 ## Calculate the variance, sort the gene based on the variance, and get the top 200 variant genes
 Gene.Var <- RowVar((mtx.sparse)) %>%
   sort(decreasing = TRUE)
-Gene.subset <- Gene.Var[1:200]
+Gene.subset <- Gene.Var[1:1000]
 
 ## Subset data based on the gene index
 mtx.sparse.subset <- mtx.sparse[names(Gene.subset),]
 ```
 
 ### Get pseudobulk for each cell type in each mouse
+
 ```{r pseudobulk mouse, warnings=FALSE}
 ## remove minor cell populations, because in some mouse, there are only few cells from those population 
 minor_cell_populaiton <- c("Brush cell of epithelium proper of large intestine",
@@ -163,6 +178,7 @@ for (imouse in mouse.list) {
 ```
 
 ### For each cell type, combine the pseudobulk data from each mouse
+
 ```{r final pseudobulk, warning=FALSE}
 major_cell_population <- c("intestinal crypt stem cell",
                            "large intestine goblet cell",
@@ -186,5 +202,84 @@ for (icell in major_cell_population) {
 }
 ```
 
+## Differential analysis
 
+Get differential genes among ages for each cell types
+
+### Make col data for DeSeq2
+
+Get meta data from annotation files and make it as `colData` object for use in `DESeq`.
+
+```{r meta}
+meta <- annot %>%
+  select(mouse.id) %>%
+  mutate(id = mouse.id) %>%
+  distinct %>%
+  separate(id,c("month","id","gender"))
+rownames(meta) <- meta$mouse.id
+meta$month.factor <- factor(meta$month)
+meta$gender.factor <- factor(meta$gender)
+```
+
+### Read the count matrix
+
+Read the count matrix by `DESeqDataSetFromMatrix()`.
+
+```{r read_count}
+dds.list <- list()
+for (icell in major_cell_population) {
+  test.df <- pseudobulk.cell[[icell]]
+  test.df <- test.df[,2:ncol(test.df)] %>%
+    mutate_if(is.numeric,round)
+  test.mtx <- as.matrix(test.df)
+  dds.list[[icell]] <- DESeqDataSetFromMatrix(countData = test.mtx,
+                                colData = meta,
+                                design = ~ month.factor)
+}
+```
+
+### Perform differential analysis (18 vs 3 and 24 vs 3)
+
+Perform differential analysis by comparing 18 vs 3 months and 24 vs 3 months. Also get the count matrix (We already normalized it before, so we don't normalize it again) 
+
+```{r differential_analysis, warning=FALSE}
+res.list <- list()
+for (icell in major_cell_population) {
+  dds <- DESeq(dds.list[[icell]])
+  for (imonth in c("18","24")) {
+    res <- as.data.frame(results(dds,contrast = c("month.factor",imonth,"3")))
+    res <- checkDEG(res, 0.05, 0.5)
+    res.list[[icell]][[imonth]] <- res
+  }
+}
+
+## combine all counts
+count.list <- list()
+for (icell in major_cell_population) {
+  count.list[[icell]] <- as.data.frame(counts(dds.list[[icell]], normalized=FALSE))
+}
+```
+
+### Generate data frame for Tableau and save it
+
+```{r Tableau}
+df.list <- list()
+for (icell in major_cell_population) {
+  df <- as.data.frame(t(count.list[[icell]]))
+  df$mouse.id <- rownames(df)
+  df <- df %>%
+    gather(symbol, count, -(mouse.id)) %>%
+    separate(mouse.id, c("month","id","gender")) %>%
+    mutate(mouse.id = paste(month,id,gender,sep="_")) %>%
+    left_join(res.list[[icell]][["18"]][,c("symbol","DEG")],by="symbol") %>%
+    left_join(res.list[[icell]][["24"]][,c("symbol","DEG")],by="symbol") %>%
+    mutate(DEG.both = ifelse((DEG.x != "None") & (DEG.y != "None"), TRUE, FALSE))
+  colnames(df) <- c("month","id","gender","symbol","count","mouse.id","DEG.18","DEG.24","DEG.both")
+  save_csv(df,output_dir,paste(method,tissue,icell,paste0("final_df",".csv"),sep="_"))
+  df.list[[icell]] <- df
+}
+```
+
+
+## Perform GSEA
 
