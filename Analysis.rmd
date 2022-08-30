@@ -23,11 +23,14 @@ Due to the large size, all input files are not uploaded. All output files for Ta
 
 Packages are required for this analysis.
 
-```{r packages, warning=FALSE}
+```{r packages, warning=FALSE, message=FALSE}
 library(dplyr)
 library(tidyr)
 library(Matrix)
 library(DESeq2)
+library(msigdbr)
+library(forcats)
+library(fgsea)
 ```
 
 ## Set dir and variables
@@ -82,6 +85,50 @@ checkDEG <- function(df,padj,log2FC) {
   df$symbol <- rownames(df)
   return(df)
 }
+
+## Get GO objects
+get_GO <- function(df,pathway){
+  stopifnot(!missing(df))
+  stopifnot(!missing(pathway))
+  input <- df
+  input <- input[!is.na(input$log2FoldChange), ]
+  input <- input %>%
+    dplyr::arrange(desc(log2FoldChange))
+  ranks <- setNames(input$log2FoldChange , input$symbol)
+  fgseaRes <- fgsea(pathways = pathways, stats = ranks, minSize=15, maxSize=500)
+  fgseaRes$topGenes <- ""
+  for(k in seq(1:length(fgseaRes$leadingEdge))){
+    fgseaRes$topGenes[k] <- fgseaRes$leadingEdge[k][[1]] %>% paste(., collapse = ",")
+  }
+  return(fgseaRes)
+}
+
+## Get GSEA plot
+get_fgsea_plot <- function(df){
+  stopifnot(!missing(df))
+  df <- df %>%
+    dplyr::mutate(Regulation = ifelse(NES > 0, "Up", "Down")) %>%
+    dplyr::mutate(log_padj_mutated = ifelse(NES > 0, -log10(padj), log10(padj)))
+  df_up <- df %>%
+    dplyr::arrange(desc(NES)) %>%
+    slice(1:5)
+  df_down <- df %>%
+    dplyr::arrange(NES) %>%
+    slice(1:5)
+  df_subset <- rbind(df_up,df_down)
+  
+  p.fgsea <- ggplot(df_subset,aes(x=reorder(pathway,log_padj_mutated),y=log_padj_mutated,fill=factor(Regulation))) + 
+    geom_bar(stat='identity') + theme(panel.background = element_rect(fill = "white", colour = "black"),
+                                      panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                                      plot.title = element_text(size = 7),
+                                      axis.title.y = element_blank(), axis.title.x = element_blank(),
+                                      axis.text= element_text(size = 5)) + 
+    geom_hline(yintercept = -log10(0.05)) + 
+    geom_hline(yintercept = log10(0.05)) + 
+    scale_fill_manual(values=c("blue","red")) +
+    coord_flip() + labs(y='-log10(padj)',x='pathways')
+  return(p.fgsea)
+}
 ```
 
 ## read inputs
@@ -95,6 +142,8 @@ mtx <- as.matrix(t(mtx))
 
 ## convert count matrix to sparse matrix for faster computing
 mtx.sparse <- Matrix(mtx, sparse = TRUE)
+
+## Check the sparse matrix class
 class(mtx.sparse)
 ```
 
@@ -104,7 +153,7 @@ class(mtx.sparse)
 
 Generate reports for cell proportion dynamics
 
-```{r cell_proportions, warnings=FALSE}
+```{r cell_proportions, warnings=FALSE, message=FALSE}
 type_cell_proportion <- "cell_proportion"
 cell_sum <- annot %>%
   group_by(mouse.id,cell_ontology_class) %>%
@@ -125,8 +174,18 @@ Take a look at how many cell types in this tissue.
 
 ```{r cell_proportions, warnings=FALSE}
 cell.type.list <- annot %>%
-  distinct(cell_ontology_class) %>%
-  as.list(.)
+  group_by(cell_ontology_class) %>%
+  summarise(count=n())
+
+## Determine the major and minor cell population
+minor_cell_populaiton <- c("Brush cell of epithelium proper of large intestine",
+                           "secretory cell",
+                           "enteroendocrine cell")
+major_cell_population <- c("all",
+                           "intestinal crypt stem cell",
+                           "large intestine goblet cell",
+                           "enterocyte of epithelium of large intestine",
+                           "epithelial cell of large intestine")
 cell.type.list
 ```
 
@@ -139,15 +198,15 @@ mouseid.list <- annot %>%
 mouseid.list
 ```
 
-### Get data with the most 200 variant genes
+### Get data with the most variant genes
 
-To reduce the computation, we will only choose top 200 genes with the most variance for further analysis.
+To reduce the computation, we will only choose top genes with the most variance for further analysis.
 
 ```{r variance, warnings=FALSE}
-## Calculate the variance, sort the gene based on the variance, and get the top 200 variant genes
+## Calculate the variance, sort the gene based on the variance, and get the top variant genes
 Gene.Var <- RowVar((mtx.sparse)) %>%
   sort(decreasing = TRUE)
-Gene.subset <- Gene.Var[1:1000]
+Gene.subset <- Gene.Var[1:22075]
 
 ## Subset data based on the gene index
 mtx.sparse.subset <- mtx.sparse[names(Gene.subset),]
@@ -157,9 +216,6 @@ mtx.sparse.subset <- mtx.sparse[names(Gene.subset),]
 
 ```{r pseudobulk mouse, warnings=FALSE}
 ## remove minor cell populations, because in some mouse, there are only few cells from those population 
-minor_cell_populaiton <- c("Brush cell of epithelium proper of large intestine",
-                           "secretory cell",
-                           "enteroendocrine cell")
 mouse.list <- c("18_53_M", "18_45_M", "18_46_F",
                  "18_47_F", "24_60_M", "24_59_M",
                  "24_58_M", "24_61_M", "3_8_M",
@@ -167,24 +223,23 @@ mouse.list <- c("18_53_M", "18_45_M", "18_46_F",
                  "3_56_F", "3_38_F", "3_39_F" )
 annot.subset <- annot %>%
   filter(!cell_ontology_class %in%  minor_cell_populaiton)
+
 pseudobulk.mouse <- list()
 for (imouse in mouse.list) {
   test.mouse <- annot.subset %>%
       filter(mouse.id == {{imouse}})
   celltype <- as.factor(test.mouse$cell_ontology_class)
   names(celltype) <- test.mouse$index
-  pseudobulk.mouse[[imouse]] <- getPseudobulk(mtx.sparse.subset, celltype)
+  output <- getPseudobulk(mtx.sparse.subset, celltype)
+  output.df <- as.data.frame(output)
+  output.df$all <- rowSums(output.df)
+  pseudobulk.mouse[[imouse]] <- output.df
 }
 ```
 
 ### For each cell type, combine the pseudobulk data from each mouse
 
 ```{r final pseudobulk, warning=FALSE}
-major_cell_population <- c("intestinal crypt stem cell",
-                           "large intestine goblet cell",
-                           "enterocyte of epithelium of large intestine",
-                           "epithelial cell of large intestine")
-
 pseudobulk.cell <- list()
 for (icell in major_cell_population) {
   output <- data.frame(symbol=rownames(mtx.sparse.subset))
@@ -225,12 +280,13 @@ meta$gender.factor <- factor(meta$gender)
 
 Read the count matrix by `DESeqDataSetFromMatrix()`.
 
-```{r read_count}
+```{r read_count, message=FALSE}
 dds.list <- list()
 for (icell in major_cell_population) {
-  test.df <- pseudobulk.cell[[icell]]
-  test.df <- test.df[,2:ncol(test.df)] %>%
+  input <- pseudobulk.cell[[icell]]
+  test.df <- input[,2:ncol(input)] %>%
     mutate_if(is.numeric,round)
+  rownames(test.df) <- input$symbol
   test.mtx <- as.matrix(test.df)
   dds.list[[icell]] <- DESeqDataSetFromMatrix(countData = test.mtx,
                                 colData = meta,
@@ -242,7 +298,7 @@ for (icell in major_cell_population) {
 
 Perform differential analysis by comparing 18 vs 3 months and 24 vs 3 months. Also get the count matrix (We already normalized it before, so we don't normalize it again) 
 
-```{r differential_analysis, warning=FALSE}
+```{r differential_analysis, message=FALSE}
 res.list <- list()
 for (icell in major_cell_population) {
   dds <- DESeq(dds.list[[icell]])
@@ -256,7 +312,9 @@ for (icell in major_cell_population) {
 ## combine all counts
 count.list <- list()
 for (icell in major_cell_population) {
-  count.list[[icell]] <- as.data.frame(counts(dds.list[[icell]], normalized=FALSE))
+  input <- dds.list[[icell]]
+  input <- estimateSizeFactors(input)
+  count.list[[icell]] <- as.data.frame(counts(input, normalized=TRUE))
 }
 ```
 
@@ -271,15 +329,80 @@ for (icell in major_cell_population) {
     gather(symbol, count, -(mouse.id)) %>%
     separate(mouse.id, c("month","id","gender")) %>%
     mutate(mouse.id = paste(month,id,gender,sep="_")) %>%
-    left_join(res.list[[icell]][["18"]][,c("symbol","DEG")],by="symbol") %>%
-    left_join(res.list[[icell]][["24"]][,c("symbol","DEG")],by="symbol") %>%
+    left_join(res.list[[icell]][["18"]][,c("symbol","log2FoldChange","DEG")],by="symbol") %>%
+    left_join(res.list[[icell]][["24"]][,c("symbol","log2FoldChange","DEG")],by="symbol") %>%
     mutate(DEG.both = ifelse((DEG.x != "None") & (DEG.y != "None"), TRUE, FALSE))
-  colnames(df) <- c("month","id","gender","symbol","count","mouse.id","DEG.18","DEG.24","DEG.both")
+  colnames(df) <- c("month","id","gender","symbol","count","mouse.id",
+                    "log2FC.18","DEG.18","log2FC.24","DEG.24","DEG.both")
   save_csv(df,output_dir,paste(method,tissue,icell,paste0("final_df",".csv"),sep="_"))
   df.list[[icell]] <- df
 }
 ```
 
 
-## Perform GSEA
+## Perform GSEA (Gene Set Enrichment analysis)
 
+We perform GSEA for data from differential analysis. Keep in mind we may not have significant results since the number of differential genes in each cell type are low.
+
+### Loading pathway
+
+Load pathways from database.
+
+```{r pathway, warning=FALSE, message=FALSE, results='hold'}
+# GO_collections <- msigdbr_collections() 
+# split() comes from base R
+c2cpKegg_gene_sets = msigdbr(species = "Mus musculus", category = "C2", subcategory = "CP:KEGG")
+c2cpKegg_gene_sets_list = split(x = c2cpKegg_gene_sets$gene_symbol, f = c2cpKegg_gene_sets$gs_name)
+
+c2cpReactome_gene_sets = msigdbr(species = "Mus musculus", category = "C2", subcategory = "CP:REACTOME")
+c2cpReactome_gene_sets_list = split(x = c2cpReactome_gene_sets$gene_symbol, f = c2cpReactome_gene_sets$gs_name)
+
+c5bp_gene_sets = msigdbr(species = "Mus musculus", category = "C5", subcategory = "GO:BP")
+c5bp_gene_sets_list = split(x = c5bp_gene_sets$gene_symbol, f = c5bp_gene_sets$gs_name)
+
+# c5mf_gene_sets = msigdbr(species = "Mus musculus", category = "C5", subcategory = "GO:MF")
+# c5mf_gene_sets_list = split(x = c5mf_gene_sets$gene_symbol, f = c5mf_gene_sets$gs_name)
+
+gene_sets_list <- c(c2cpKegg_gene_sets_list, c2cpReactome_gene_sets_list, c5bp_gene_sets_list)
+
+# Remove duplicated genes in the list
+for(i in 1:length(gene_sets_list)){
+  gene_sets_list[[i]] <- unique(gene_sets_list[[i]])
+}
+```
+
+### Perform GSEA
+```{r DEG_list, warning=FALSE, message=FALSE}
+DEG.list <- list()
+for (icell in major_cell_population) {
+  DEG.list[[icell]] <- df.list[[icell]] %>%
+    select(symbol,log2FC.24) %>%
+    distinct(symbol,log2FC.24) %>%
+    mutate(log2FoldChange = log2FC.24) %>%
+    arrange(desc(log2FoldChange))
+}
+
+## Perform GSEA on only psudobulk data
+pathways <- gene_sets_list
+GO.list <- list()
+for (icell in major_cell_population) {
+  GO.list[[icell]] <- get_GO(DEG.list[[icell]],pathways)
+}
+```
+
+### GSEA
+
+Now we perform GSEA and save the data for Tableau.
+
+```{r warning=FALSE, message=FALSE, results='hold'}
+pathways <- gene_sets_list
+GO.list <- list()
+for (icell in major_cell_population) {
+  GO.list[[icell]] <- get_GO(DEG.list[[icell]],pathway)
+}
+
+for (icell in major_cell_population) {
+  output_df <- apply(GO.list[[icell]],2,as.character)
+  save_csv(output_df,output_dir, paste(method,tissue,icell,paste0("final_df",".csv"),sep="_"))
+}
+```
