@@ -174,7 +174,7 @@ save_csv(cell_proportion,output_dir,paste(method,tissue,paste0(type_cell_proport
 
 Take a look at how many cell types in this tissue.
 
-```{r cell_proportions, warnings=FALSE}
+```{r expression_dynamics, warnings=FALSE}
 cell.type.list <- annot %>%
   group_by(cell_ontology_class) %>%
   summarise(count=n())
@@ -193,7 +193,7 @@ cell.type.list
 
 Take a look at how many mouse id.
 
-```{r cell_proportions, warnings=FALSE}
+```{r mouse_id, warnings=FALSE}
 mouseid.list <- annot %>%
   distinct(mouse.id) %>%
   as.list(.)
@@ -322,7 +322,7 @@ for (icell in major_cell_population) {
 
 ### Generate data frame for Tableau and save it
 
-```{r Tableau}
+```{r Tableau, message=FALSE}
 df.list <- list()
 for (icell in major_cell_population) {
   df <- as.data.frame(t(count.list[[icell]]))
