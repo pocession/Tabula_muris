@@ -100,7 +100,6 @@ get_GO <- function(df,pathway){
   for(k in seq(1:length(fgseaRes$leadingEdge))){
     fgseaRes$topGenes[k] <- fgseaRes$leadingEdge[k][[1]] %>% paste(., collapse = ",")
   }
-  fgseaRes <- as.data.frame(fgseaRes)
   return(fgseaRes)
 }
 
@@ -133,6 +132,8 @@ get_fgsea_plot <- function(df){
 ```
 
 ## read inputs
+
+We read data and transform it to sparse matrix, which can make the computation faster. The file reading is a long process.
 
 ```{r inputs, echo=FALSE}
 annot <- read.csv(file.path(input_dir,paste(method,tissue,paste0("annot",".csv"),sep="_")))
@@ -332,9 +333,12 @@ for (icell in major_cell_population) {
     mutate(mouse.id = paste(month,id,gender,sep="_")) %>%
     left_join(res.list[[icell]][["18"]][,c("symbol","log2FoldChange","DEG")],by="symbol") %>%
     left_join(res.list[[icell]][["24"]][,c("symbol","log2FoldChange","DEG")],by="symbol") %>%
-    mutate(DEG.both = ifelse((DEG.x != "None") & (DEG.y != "None"), TRUE, FALSE))
-  colnames(df) <- c("month","id","gender","symbol","count","mouse.id",
-                    "log2FC.18","DEG.18","log2FC.24","DEG.24","DEG.both")
+    mutate(DEG.both = ifelse((DEG.x != "None") & (DEG.y != "None"), TRUE, FALSE)) %>%
+    mutate(abs.log2FC.18 = abs(log2FoldChange.x)) %>%
+    mutate(abs.log2FC.24 = abs(log2FoldChange.y))
+   colnames(df) <- c("month","id","gender","symbol","count","mouse.id",
+                   "log2FC.18","DEG.18","log2FC.24","DEG.24","DEG.both",
+                   "abs.log2FC.18","abs.log2FC.24")
   save_csv(df,output_dir,paste(method,tissue,icell,paste0("final_df",".csv"),sep="_"))
   df.list[[icell]] <- df
 }
@@ -373,7 +377,11 @@ for(i in 1:length(gene_sets_list)){
 ```
 
 ### Perform GSEA
-```{r DEG_list, warning=FALSE, message=FALSE}
+
+Now we perform GSEA and save the data for Tableau.
+
+```{r warning=FALSE, message=FALSE, results='hold'}
+## Create gene list and order it by log2FC.24
 DEG.list <- list()
 for (icell in major_cell_population) {
   DEG.list[[icell]] <- df.list[[icell]] %>%
@@ -383,27 +391,16 @@ for (icell in major_cell_population) {
     arrange(desc(log2FoldChange))
 }
 
-## Perform GSEA on only psudobulk data
 pathways <- gene_sets_list
-GO.list <- list()
-for (icell in major_cell_population) {
-  GO.list[[icell]] <- get_GO(DEG.list[[icell]],pathways)
-}
-```
 
-### GSEA
-
-Now we perform GSEA and save the data for Tableau.
-
-```{r warning=FALSE, message=FALSE, results='hold'}
-pathways <- gene_sets_list
+## long process
 GO.list <- list()
 for (icell in major_cell_population) {
   GO.list[[icell]] <- get_GO(DEG.list[[icell]],pathway)
 }
 
-for (icell in major_cell_population) {
-  output_df <- apply(GO.list[[icell]],2,as.character)
-  save_csv(output_df,output_dir, paste(method,tissue,icell,paste0("pathway",".csv"),sep="_"))
-}
+# for (icell in major_cell_population) {
+#   output_df <- apply(GO.list[[icell]],2,as.character)
+#   save_csv(output_df,output_dir, paste(method,tissue,icell,paste0("pathway",".csv"),sep="_"))
+# }
 ```
