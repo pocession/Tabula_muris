@@ -36,14 +36,120 @@ library(fgsea)
 
 ## Set dir and variables
 
+``` r
+wd <- getwd()
+subset <- "subset"
+output <- "output"
+input_dir <- file.path(wd,subset)
+output_dir <- file.path(wd,output)
+method <- "facs"
+tissue <- "LargeIntestine"
+```
+
 ## functions
 
 Functions used in this script
+
+``` r
+## get pseudobulk for each cell type
+getPseudobulk <- function(mat, celltype) {
+  stopifnot(!missing(mat) || !missing(celltype))
+   mat.summary <- do.call(cbind, lapply(levels(celltype), function(ct) {
+     cells <- names(celltype)[celltype==ct]
+     pseudobulk <- rowSums(mat[, cells])
+     return(pseudobulk)
+   }))
+   colnames(mat.summary) <- levels(celltype)
+   return(mat.summary)
+}
+
+## save to csv
+save_csv <- function(df,dir,name) {
+  stopifnot(!missing(df) || !missing(dir) || !missing(name))
+  write.csv(df,file.path(dir,name))
+}
+
+## calculate row-wise variance 
+RowVar <- function(x, ...) {
+  rowSums((x - rowMeans(x, ...))^2, ...)/(dim(x)[2] - 1)
+}
+
+## check the differentially-expressed genes
+checkDEG <- function(df,padj,log2FC) {
+  stopifnot(!missing(df) || !missing(padj) || !missing(log2FC))
+  df <- df %>%
+    mutate(DEG = ifelse(padj > {{padj}}, "None", ifelse(
+      log2FoldChange > {{log2FC}}, "Up", ifelse(
+        log2FoldChange < -{{log2FC}}, "Down", "None"
+      )
+    )))
+  df$symbol <- rownames(df)
+  return(df)
+}
+
+## Get GO objects
+get_GO <- function(df,pathway){
+  stopifnot(!missing(df))
+  stopifnot(!missing(pathway))
+  input <- df
+  input <- input[!is.na(input$log2FoldChange), ]
+  input <- input %>%
+    dplyr::arrange(desc(log2FoldChange))
+  ranks <- setNames(input$log2FoldChange , input$symbol)
+  fgseaRes <- fgsea(pathways = pathways, stats = ranks, minSize=15, maxSize=500)
+  fgseaRes$topGenes <- ""
+  for(k in seq(1:length(fgseaRes$leadingEdge))){
+    fgseaRes$topGenes[k] <- fgseaRes$leadingEdge[k][[1]] %>% paste(., collapse = ",")
+  }
+  return(fgseaRes)
+}
+
+## Get GSEA plot
+get_fgsea_plot <- function(df){
+  stopifnot(!missing(df))
+  df <- df %>%
+    dplyr::mutate(Regulation = ifelse(NES > 0, "Up", "Down")) %>%
+    dplyr::mutate(log_padj_mutated = ifelse(NES > 0, -log10(padj), log10(padj)))
+  df_up <- df %>%
+    dplyr::arrange(desc(NES)) %>%
+    slice(1:5)
+  df_down <- df %>%
+    dplyr::arrange(NES) %>%
+    slice(1:5)
+  df_subset <- rbind(df_up,df_down)
+  
+  p.fgsea <- ggplot(df_subset,aes(x=reorder(pathway,log_padj_mutated),y=log_padj_mutated,fill=factor(Regulation))) + 
+    geom_bar(stat='identity') + theme(panel.background = element_rect(fill = "white", colour = "black"),
+                                      panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                                      plot.title = element_text(size = 7),
+                                      axis.title.y = element_blank(), axis.title.x = element_blank(),
+                                      axis.text= element_text(size = 5)) + 
+    geom_hline(yintercept = -log10(0.05)) + 
+    geom_hline(yintercept = log10(0.05)) + 
+    scale_fill_manual(values=c("blue","red")) +
+    coord_flip() + labs(y='-log10(padj)',x='pathways')
+  return(p.fgsea)
+}
+```
 
 ## read inputs
 
 We read data and transform it to sparse matrix, which can make the
 computation faster. The file reading is a long process.
+
+``` r
+annot <- read.csv(file.path(input_dir,paste(method,tissue,paste0("annot",".csv"),sep="_")))
+mtx <- read.csv(file.path(input_dir,paste(method,tissue,paste0("mtx",".csv"),sep="_"))) # long process
+rownames(mtx) <- mtx$index
+mtx <- mtx[,2:ncol(mtx)]
+mtx <- as.matrix(t(mtx))
+
+## convert count matrix to sparse matrix for faster computing
+mtx.sparse <- Matrix(mtx, sparse = TRUE)
+
+## Check the sparse matrix class
+class(mtx.sparse)
+```
 
     ## [1] "dgCMatrix"
     ## attr(,"package")

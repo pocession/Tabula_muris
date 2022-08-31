@@ -35,7 +35,7 @@ library(fgsea)
 
 ## Set dir and variables
 
-```{r dir, echo=FALSE}
+```{r dir}
 wd <- getwd()
 subset <- "subset"
 output <- "output"
@@ -49,7 +49,7 @@ tissue <- "LargeIntestine"
 
 Functions used in this script
 
-```{r functions, echo=FALSE}
+```{r functions}
 ## get pseudobulk for each cell type
 getPseudobulk <- function(mat, celltype) {
   stopifnot(!missing(mat) || !missing(celltype))
@@ -135,7 +135,7 @@ get_fgsea_plot <- function(df){
 
 We read data and transform it to sparse matrix, which can make the computation faster. The file reading is a long process.
 
-```{r inputs, echo=FALSE}
+```{r inputs}
 annot <- read.csv(file.path(input_dir,paste(method,tissue,paste0("annot",".csv"),sep="_")))
 mtx <- read.csv(file.path(input_dir,paste(method,tissue,paste0("mtx",".csv"),sep="_"))) # long process
 rownames(mtx) <- mtx$index
