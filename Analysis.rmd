@@ -399,8 +399,9 @@ for (icell in major_cell_population) {
   GO.list[[icell]] <- get_GO(DEG.list[[icell]],pathway)
 }
 
-# for (icell in major_cell_population) {
-#   output_df <- apply(GO.list[[icell]],2,as.character)
-#   save_csv(output_df,output_dir, paste(method,tissue,icell,paste0("pathway",".csv"),sep="_"))
-# }
+for (icell in major_cell_population) {
+  output_df <- GO.list[[icell]][,-c("leadingEdge")] %>%
+    mutate(log10FDR = -log10(padj))
+  save_csv(output_df,output_dir, paste(method,tissue,icell,paste0("pathway",".csv"),sep="_"))
+}
 ```
